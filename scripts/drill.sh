@@ -101,7 +101,9 @@ PLATFORM="linux/$(docker version --format '{{.Server.Arch}}')"
 side_load() {
   local archive
   archive="$OUT_DIR/$(tr -c 'a-zA-Z0-9' '_' <<<"$1").tar"
-  docker save --platform "$PLATFORM" -o "$archive" "$1"
+  # Older Docker engines (or the classic image store) have no --platform on
+  # save, but there a pulled image already holds only one platform.
+  docker save --platform "$PLATFORM" -o "$archive" "$1" 2>/dev/null || docker save -o "$archive" "$1"
   kind load image-archive "$archive" --name "$CLUSTER"
   rm -f "$archive"
 }

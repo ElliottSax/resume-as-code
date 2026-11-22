@@ -96,6 +96,10 @@ scripts/observe.sh --fix
 make down
 ```
 
+This is what `scripts/observe.sh --break` looks like on a local cluster. With 20% of requests failing, the burn rate sits around 200×, far over the paging line at 14.4. `ResumeErrorBudgetBurnFast` went from pending to firing after three minutes, carrying a link to its runbook:
+
+![SLO dashboard during the fault-injection demo](docs/images/slo-dashboard-fault-demo.png)
+
 ## What's where
 
 ```
