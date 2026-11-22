@@ -1,0 +1,55 @@
+{{- /*
+Prometheus Operator and Grafana objects. Each is rendered only when enabled
+AND the cluster actually has the CRD, so the chart installs cleanly on a bare
+cluster (like the CI drill) and lights up on one with kube-prometheus-stack.
+*/ -}}
+{{- if and .Values.metrics.serviceMonitor.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1/ServiceMonitor") }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "resume.fullname" . }}
+  labels:
+    {{- include "resume.labels" . | nindent 4 }}
+    {{- with .Values.metrics.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "resume.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: metrics
+      interval: {{ .Values.metrics.serviceMonitor.interval }}
+      relabelings:
+        # The SLO rules select job="resume" whatever the release is called.
+        - targetLabel: job
+          replacement: resume
+{{- end }}
+{{- if and .Values.metrics.prometheusRule.enabled (.Capabilities.APIVersions.Has "monitoring.coreos.com/v1/PrometheusRule") }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "resume.fullname" . }}-slo
+  labels:
+    {{- include "resume.labels" . | nindent 4 }}
+    {{- with .Values.metrics.prometheusRule.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  # The same file is unit-tested with promtool in CI (observability/tests).
+  {{- .Files.Get "files/slo-rules.yaml" | nindent 2 }}
+{{- end }}
+{{- if .Values.metrics.grafanaDashboard.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "resume.fullname" . }}-dashboard
+  labels:
+    {{- include "resume.labels" . | nindent 4 }}
+    {{- toYaml .Values.metrics.grafanaDashboard.labels | nindent 4 }}
+data:
+  resume-slo.json: |-
+    {{- .Files.Get "files/dashboard.json" | nindent 4 }}
+{{- end }}

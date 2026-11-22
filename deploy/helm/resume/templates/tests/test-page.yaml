@@ -1,0 +1,37 @@
+# `helm test` runs this pod. It reuses the app's own image: the binary's
+# healthcheck subcommand is the HTTP client, so no extra image is pulled and
+# the test passes Pod Security "restricted" like everything else.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "resume.fullname" . }}-test-page
+  labels:
+    {{- include "resume.testLabels" . | nindent 4 }}
+  annotations:
+    helm.sh/hook: test
+    helm.sh/hook-delete-policy: before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  automountServiceAccountToken: false
+  securityContext:
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: page
+      image: {{ include "resume.image" . }}
+      imagePullPolicy: {{ .Values.image.pullPolicy }}
+      args:
+        - healthcheck
+        - -wait
+        - 30s
+        - -url
+        - http://{{ include "resume.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}/
+      securityContext:
+        {{- include "resume.containerSecurityContext" . | nindent 8 }}
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          memory: 32Mi

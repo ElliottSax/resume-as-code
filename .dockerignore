@@ -1,0 +1,6 @@
+# Allow-list: the build only ever needs the Go module.
+*
+!app/
+app/**/*_test.go
+app/**/testdata/
+app/.golangci.yml

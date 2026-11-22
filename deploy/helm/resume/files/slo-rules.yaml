@@ -1,0 +1,171 @@
+# SLOs for resume-as-code (definitions and rationale: docs/slo.md)
+#
+#   Availability: 99.9% of page requests do not return a 5xx   (budget 0.1%)
+#   Latency:      99%   of page requests finish within 250 ms  (budget 1%)
+#
+# Alerting follows the multi-window, multi-burn-rate method from the Google
+# SRE Workbook. A burn rate of 1 spends the 30-day budget exactly in 30 days;
+# 14.4 spends 2% of it per hour. Each alert needs a long window (is this
+# real?) AND a short window (is it still happening?), so it fires fast on
+# big outages, ignores brief blips, and resets soon after recovery.
+#
+# Probes are excluded: kubelet health checks are not users.
+groups:
+  - name: resume-slo-recording
+    interval: 30s
+    rules:
+      - record: resume:sli_errors:ratio_rate5m
+        expr: |
+          (sum(rate(http_requests_total{job="resume",route!~"healthz|readyz",code=~"5.."}[5m])) or vector(0))
+          /
+          sum(rate(http_requests_total{job="resume",route!~"healthz|readyz"}[5m]))
+      - record: resume:sli_errors:ratio_rate30m
+        expr: |
+          (sum(rate(http_requests_total{job="resume",route!~"healthz|readyz",code=~"5.."}[30m])) or vector(0))
+          /
+          sum(rate(http_requests_total{job="resume",route!~"healthz|readyz"}[30m]))
+      - record: resume:sli_errors:ratio_rate1h
+        expr: |
+          (sum(rate(http_requests_total{job="resume",route!~"healthz|readyz",code=~"5.."}[1h])) or vector(0))
+          /
+          sum(rate(http_requests_total{job="resume",route!~"healthz|readyz"}[1h]))
+      - record: resume:sli_errors:ratio_rate2h
+        expr: |
+          (sum(rate(http_requests_total{job="resume",route!~"healthz|readyz",code=~"5.."}[2h])) or vector(0))
+          /
+          sum(rate(http_requests_total{job="resume",route!~"healthz|readyz"}[2h]))
+      - record: resume:sli_errors:ratio_rate6h
+        expr: |
+          (sum(rate(http_requests_total{job="resume",route!~"healthz|readyz",code=~"5.."}[6h])) or vector(0))
+          /
+          sum(rate(http_requests_total{job="resume",route!~"healthz|readyz"}[6h]))
+      - record: resume:sli_errors:ratio_rate1d
+        expr: |
+          (sum(rate(http_requests_total{job="resume",route!~"healthz|readyz",code=~"5.."}[1d])) or vector(0))
+          /
+          sum(rate(http_requests_total{job="resume",route!~"healthz|readyz"}[1d]))
+      - record: resume:sli_errors:ratio_rate3d
+        expr: |
+          (sum(rate(http_requests_total{job="resume",route!~"healthz|readyz",code=~"5.."}[3d])) or vector(0))
+          /
+          sum(rate(http_requests_total{job="resume",route!~"healthz|readyz"}[3d]))
+      # Latency SLI: the fraction of requests SLOWER than 250 ms. The 0.25 s
+      # histogram bucket makes this exact rather than an estimate.
+      - record: resume:sli_latency_slow:ratio_rate5m
+        expr: |
+          1 - (
+            sum(rate(http_request_duration_seconds_bucket{job="resume",route!~"healthz|readyz",le="0.25"}[5m]))
+            /
+            sum(rate(http_request_duration_seconds_count{job="resume",route!~"healthz|readyz"}[5m]))
+          )
+      - record: resume:sli_latency_slow:ratio_rate30m
+        expr: |
+          1 - (
+            sum(rate(http_request_duration_seconds_bucket{job="resume",route!~"healthz|readyz",le="0.25"}[30m]))
+            /
+            sum(rate(http_request_duration_seconds_count{job="resume",route!~"healthz|readyz"}[30m]))
+          )
+      - record: resume:sli_latency_slow:ratio_rate1h
+        expr: |
+          1 - (
+            sum(rate(http_request_duration_seconds_bucket{job="resume",route!~"healthz|readyz",le="0.25"}[1h]))
+            /
+            sum(rate(http_request_duration_seconds_count{job="resume",route!~"healthz|readyz"}[1h]))
+          )
+      - record: resume:sli_latency_slow:ratio_rate6h
+        expr: |
+          1 - (
+            sum(rate(http_request_duration_seconds_bucket{job="resume",route!~"healthz|readyz",le="0.25"}[6h]))
+            /
+            sum(rate(http_request_duration_seconds_count{job="resume",route!~"healthz|readyz"}[6h]))
+          )
+
+  - name: resume-slo-alerts
+    rules:
+      - alert: ResumeErrorBudgetBurnFast
+        expr: |
+          (
+            resume:sli_errors:ratio_rate1h > (14.4 * 0.001)
+            and
+            resume:sli_errors:ratio_rate5m > (14.4 * 0.001)
+          )
+          or
+          (
+            resume:sli_errors:ratio_rate6h > (6 * 0.001)
+            and
+            resume:sli_errors:ratio_rate30m > (6 * 0.001)
+          )
+        for: 2m
+        labels:
+          severity: page
+          slo: availability
+        annotations:
+          summary: Error budget is burning fast
+          description: Requests are failing fast enough to spend the whole 30-day error budget in a few days. Someone needs to look now.
+          runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/high-error-rate.md
+
+      - alert: ResumeErrorBudgetBurnSlow
+        expr: |
+          (
+            resume:sli_errors:ratio_rate1d > (3 * 0.001)
+            and
+            resume:sli_errors:ratio_rate2h > (3 * 0.001)
+          )
+          or
+          (
+            resume:sli_errors:ratio_rate3d > (1 * 0.001)
+            and
+            resume:sli_errors:ratio_rate6h > (1 * 0.001)
+          )
+        for: 15m
+        labels:
+          severity: ticket
+          slo: availability
+        annotations:
+          summary: Error budget is burning steadily
+          description: A low but persistent error rate will exhaust the 30-day error budget before the window ends. Fix it this week, not tonight.
+          runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/high-error-rate.md
+
+      - alert: ResumeLatencyBudgetBurnFast
+        expr: |
+          (
+            resume:sli_latency_slow:ratio_rate1h > (14.4 * 0.01)
+            and
+            resume:sli_latency_slow:ratio_rate5m > (14.4 * 0.01)
+          )
+          or
+          (
+            resume:sli_latency_slow:ratio_rate6h > (6 * 0.01)
+            and
+            resume:sli_latency_slow:ratio_rate30m > (6 * 0.01)
+          )
+        for: 2m
+        labels:
+          severity: page
+          slo: latency
+        annotations:
+          summary: Latency budget is burning fast
+          description: Too many requests are taking longer than 250 ms. At this rate the 30-day latency budget is gone in a few days.
+          runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/high-latency.md
+
+      - alert: ResumeAllReplicasDown
+        # `or vector(0)` makes this fire when the target vanishes entirely,
+        # not only when it reports up=0. Silence is not health.
+        expr: (sum(up{job="resume"}) or vector(0)) == 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: No resume replica is being scraped successfully
+          description: Prometheus cannot reach any replica. Either the service is down or monitoring is broken, and both need a human.
+          runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/all-replicas-down.md
+
+      - alert: ResumeReplicasDegraded
+        expr: sum(resume_ready{job="resume"}) < 2
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Fewer than two replicas are ready
+          description: The service is up but one more failure from an outage. Rollouts and drains should never hold it here this long.
+          runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/replicas-degraded.md

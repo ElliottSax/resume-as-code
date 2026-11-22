@@ -1,0 +1,13 @@
+apiVersion: v2
+name: resume
+description: The resume-as-code service. Hardened by default, observable when monitoring is installed.
+type: application
+version: 0.1.0
+appVersion: "dev"
+kubeVersion: ">=1.30.0-0"
+home: https://github.com/ElliottSax/resume-as-code
+sources:
+  - https://github.com/ElliottSax/resume-as-code
+maintainers:
+  - name: Elliott Saxton
+    url: https://github.com/ElliottSax

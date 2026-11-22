@@ -1,0 +1,152 @@
+# The resume content. `resume validate` and CI enforce the schema:
+# unknown keys, bad dates and unsafe link schemes all fail the build.
+# Every line here should be something you can talk about for five minutes.
+
+name: Elliott Saxton
+headline: Senior Operations Analyst moving into DevOps & Site Reliability Engineering
+location: Minneapolis, MN
+summary: >-
+  Fifteen years in operations where a missed window costs money: aircraft turns
+  for Delta, distribution centers at SuperValu and Best Buy, and payment and
+  gift-card operations at Target. DevOps is the same job done in code, so I
+  built this site to show it. It has service-level objectives where I used to
+  have SLAs, runbooks where I used to have SOPs, blameless postmortems where I
+  used to write root-cause memos, and a pipeline that proves its own claims on
+  every release.
+
+links:
+  - label: elliottsaxton@gmail.com
+    url: mailto:elliottsaxton@gmail.com
+  - label: GitHub
+    url: https://github.com/ElliottSax
+  - label: Source for this site
+    url: https://github.com/ElliottSax/resume-as-code
+
+translation:
+  - then: Turned aircraft in 30-minute windows with the same checklist every time, no shortcuts
+    now: A delivery pipeline that tests, scans, signs and deploys every change the same way
+    proof: delivery.yml
+    proof_url: https://github.com/ElliottSax/resume-as-code/blob/main/.github/workflows/delivery.yml
+  - then: Tracked SLA, quality and service-level metrics daily
+    now: SLOs with error budgets and multi-window burn-rate alerts
+    proof: SLOs and alert tests
+    proof_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/slo.md
+  - then: Served on the "Go Team" that responded to unscheduled operational problems
+    now: Incident response and blameless postmortems
+    proof: Postmortems
+    proof_url: https://github.com/ElliottSax/resume-as-code/tree/main/docs/postmortems
+  - then: Wrote SOPs and onboarded new hires through a peer program
+    now: Runbooks linked from every alert, and a one-command local environment
+    proof: Runbooks
+    proof_url: https://github.com/ElliottSax/resume-as-code/tree/main/docs/runbooks
+  - then: Reconciled trailer logs against physical yard inventory
+    now: Knowing exactly what ships in every container image, and proving it
+    proof: SBOM and signing
+    proof_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/supply-chain.md
+  - then: Enforced OSHA inspection and asset-protection compliance
+    now: Policy as code that rejects insecure workloads in CI and at admission
+    proof: Policies
+    proof_url: https://github.com/ElliottSax/resume-as-code/tree/main/policy
+  - then: Ran drills so the team knew what to do before anything went wrong
+    now: Chaos engineering that kills pods and drains nodes on every release
+    proof: drill.sh
+    proof_url: https://github.com/ElliottSax/resume-as-code/blob/main/scripts/drill.sh
+
+projects:
+  - name: resume-as-code (this site)
+    url: https://github.com/ElliottSax/resume-as-code
+    summary: >-
+      A production-grade platform whose only job is to serve this page, and to
+      prove on every release that it survives failure.
+    highlights:
+      - Go service with Prometheus metrics, structured JSON logs, graceful shutdown and a distroless, non-root, read-only container
+      - Every release builds a throwaway three-node Kubernetes cluster, deploys with Helm, then kills pods, drains a node and rolls out a deploy under load. The release is blocked unless the SLO holds.
+      - "Supply chain controls: vulnerability scanning, an SBOM, keyless Sigstore signing and SLSA build provenance. Every CI action is pinned to a commit SHA and every tool download is checksum-verified."
+      - SLO burn-rate alerts with unit tests, a runbook linked from every alert, and Kyverno policies that reject insecure manifests before merge
+      - Terraform for the repository's own settings and for a Google Cloud Run production target that deploys with OIDC, with no stored keys
+    stack: [Go, Docker, Kubernetes, Helm, GitHub Actions, Terraform, Prometheus, Grafana, Kyverno, Trivy, Sigstore]
+  - name: Home lab automation platform
+    summary: >-
+      I run my own always-on automation systems on a desktop and three Linux
+      laptops, including a self-hosted LLM API gateway. Operating them is where
+      I learned the lessons in my postmortems.
+    highlights:
+      - A host suspend killed the gateway and its watchdog at the same moment, causing a 7 h 45 min outage. I added a supervisor for the supervisor.
+      - Found a two-day silent outage in which 87% of jobs failed in under a second because one code path never sent an auth header, then fixed it and wrote up why nothing alerted
+      - Added per-machine circuit breakers, single-instance locks and atomic writes to a multi-machine job dispatcher after seeing it fail in each of those ways
+    stack: [Python, Linux, SSH, tmux, LiteLLM, Windows Task Scheduler]
+
+experience:
+  - company: Target Corporation
+    location: Brooklyn Park, MN
+    title: Senior Operations Analyst / Senior Specialist
+    start: "2018-08"
+    end: present
+    highlights:
+      - Run payment and gift-card operational workflows across Salesforce, Power Apps, Base24 and GiftCard Red
+      - Consistently meet or exceed performance, quality and service-level metrics through disciplined tracking and process management
+      - Troubleshoot operational bottlenecks with external payment partners (Blackhawk Network, InComm) and drive issues to resolution
+      - Analyze workflow data to find recurring friction points and recommend system enhancements
+      - Onboard and train new team members through the Peer Onboarding Program, standardizing how the work gets done
+  - company: SuperValu, Inc.
+    location: Hopkins, MN
+    title: Operations & Logistics Specialist
+    start: "2015-05"
+    end: "2015-09"
+    highlights:
+      - Directed warehouse inventory control and replenishment, including slot-tag audits, reserve verification and cross-dock orders
+      - Ran Vocollect Pick Manager to optimize pick routes and selector assignments against on-time dock-out schedules
+      - Routed OSHA-mandated powered industrial vehicle inspections to Risk Management to keep the floor compliant
+  - company: Best Buy, Inc.
+    location: Bloomington, MN
+    title: Logistics & Asset Protection Specialist
+    start: "2014-10"
+    end: "2015-01"
+    highlights:
+      - Supervised distribution-center gatehouse operations, verifying driver credentials and bills of lading for inbound and outbound freight
+      - Reconciled trailer logs and receiving documents against physical yard inventory to keep inventory data accurate
+  - company: Total Freedom Realty & Keller Williams Realty
+    location: Twin Cities, MN
+    title: Realtor / Real Estate Business Consultant
+    start: "2010-01"
+    end: "2015-06"
+    highlights:
+      - Managed transactions end to end, coordinating buyers, sellers, lenders, inspectors and title companies to close on time
+      - Built data-informed prospecting methods to find off-market opportunities
+  - company: Regional Elite Airline Services (Delta Air Lines)
+    location: St. Paul, MN
+    title: Aircraft Operations & Grooming Supervisor
+    start: "2008-10"
+    end: "2013-07"
+    highlights:
+      - Supervised ground operations, aircraft servicing teams and ramp logistics in a high-tempo airport environment
+      - Served on the rapid-response "Go Team" that troubleshot unscheduled operational issues in real time
+      - Ran time-critical quick-turn departures inside 30-minute windows while keeping strict regulatory and safety compliance
+
+skills:
+  - name: Platform
+    items: [Kubernetes, Helm, Docker, Linux, Pod Security Standards, NetworkPolicy]
+  - name: Delivery
+    items: [GitHub Actions, Trivy, Syft SBOMs, Sigstore cosign, SLSA provenance, Kyverno]
+  - name: Infrastructure as code
+    items: [Terraform, Google Cloud Run, Workload Identity Federation]
+  - name: Observability
+    items: [Prometheus, PromQL, Grafana, SLOs and error budgets, structured logging]
+  - name: Languages
+    items: [Go, Python, Bash, SQL]
+  - name: Operations
+    items: [Incident response, root-cause analysis, runbooks and SOPs, vendor management, KPI tracking]
+
+education:
+  - credential: Certificate in Data Analytics and Visualization
+    institution: University of Minnesota
+    location: Minneapolis, MN
+    date: Jun 2022
+    notes:
+      - Python, SQL, Tableau, statistical modeling and business intelligence
+  - credential: B.S. Business Management
+    institution: St. Cloud State University
+    location: St. Cloud, MN
+    date: May 2008
+    notes:
+      - Emphasis in Enterprise Resource Planning and Supply Chain Management

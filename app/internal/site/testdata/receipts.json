@@ -1,0 +1,35 @@
+{
+  "generated_at": "2026-11-22T14:03:00Z",
+  "repo": "ElliottSax/resume-as-code",
+  "commit": "0123456789abcdef0123456789abcdef01234567",
+  "run_url": "https://github.com/ElliottSax/resume-as-code/actions",
+  "image": {
+    "ref": "ghcr.io/elliottsax/resume-as-code",
+    "digest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "size_mb": 9.8,
+    "signed": true,
+    "sbom_url": "sbom.spdx.json"
+  },
+  "scan": { "tool": "Trivy", "critical": 0, "high": 0, "medium": 0, "low": 0 },
+  "tests": { "passed": 30, "coverage_pct": 85.0 },
+  "drill": {
+    "ran_at": "2026-11-22T14:00:00Z",
+    "kubernetes": "v1.37.0",
+    "nodes": 3,
+    "cluster_create_seconds": 40,
+    "deploy_seconds": 20,
+    "duration_seconds": 180,
+    "requests": 18000,
+    "failed": 0,
+    "success_pct": 100,
+    "p95_ms": 4.0,
+    "p99_ms": 9.0,
+    "pods_killed": 6,
+    "rollouts": 1,
+    "node_drains": 1,
+    "max_replicas": 3,
+    "pod_security_rejected": true,
+    "network_policy_blocked": true,
+    "slo": { "availability_pct": 99.9, "latency_pct": 99, "latency_ms": 250, "met": true }
+  }
+}

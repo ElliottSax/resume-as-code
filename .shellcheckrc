@@ -1,0 +1,3 @@
+# Follow `source` directives (tools.env) relative to each script.
+external-sources=true
+source-path=SCRIPTDIR

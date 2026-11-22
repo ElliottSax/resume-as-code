@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>{{.Resume.Name}} · {{.Resume.Headline}}</title>
+<meta name="description" content="{{.Resume.Name}}: {{.Resume.Headline}}. A resume served by the production platform it describes.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+
+<header class="masthead">
+  <h1>{{.Resume.Name}}</h1>
+  <p class="headline">{{.Resume.Headline}}</p>
+  <p class="contact">
+    <span>{{.Resume.Location}}</span>
+    {{- range .Resume.Links}}<span class="sep" aria-hidden="true">·</span><a href="{{.URL}}">{{.Label}}</a>{{end}}
+  </p>
+</header>
+
+{{with .Receipts}}
+<section class="receipts" aria-labelledby="receipts-title">
+  <div class="receipts-head">
+    <h2 id="receipts-title"><span class="dot {{if and .Drill .Drill.SLO.Met}}ok{{else}}warn{{end}}" aria-hidden="true"></span>This page has receipts</h2>
+    <p>The pipeline that published this page measured everything below. None of it was typed by hand. <a href="{{$.RepoURL}}#how-this-page-proves-itself">How it works</a></p>
+  </div>
+  <dl class="checks">
+    <div class="check">
+      <dt><span class="dot ok" aria-hidden="true"></span>Built from</dt>
+      <dd>commit <a href="https://github.com/{{.Repo}}/commit/{{.Commit}}"><code>{{short .Commit}}</code></a> by <a href="{{.RunURL}}">this pipeline run</a> on {{utc .GeneratedAt}}</dd>
+    </div>
+    <div class="check">
+      <dt><span class="dot {{if .Image.Signed}}ok{{else}}warn{{end}}" aria-hidden="true"></span>Container</dt>
+      <dd>{{fixed 1 .Image.SizeMB}} MB compressed, distroless, non-root, read-only filesystem{{if .Image.Signed}}, signed keylessly with Sigstore{{end}}{{if .Image.SBOMURL}} · <a href="{{.Image.SBOMURL}}">software bill of materials</a>{{end}}</dd>
+    </div>
+    <div class="check">
+      <dt><span class="dot {{if and (eq .Scan.Critical 0) (eq .Scan.High 0)}}ok{{else}}warn{{end}}" aria-hidden="true"></span>Vulnerabilities</dt>
+      <dd>{{.Scan.Critical}} critical · {{.Scan.High}} high · {{.Scan.Medium}} medium in the shipped image ({{.Scan.Tool}})</dd>
+    </div>
+    <div class="check">
+      <dt><span class="dot ok" aria-hidden="true"></span>Tests</dt>
+      <dd>{{.Tests.Passed}} passing with the race detector on · {{fixed 1 .Tests.CoveragePct}}% statement coverage</dd>
+    </div>
+    {{- with .Drill}}
+    <div class="check">
+      <dt><span class="dot ok" aria-hidden="true"></span>Chaos drill</dt>
+      <dd>Built a {{.Nodes}}-node Kubernetes {{.Kubernetes}} cluster from scratch, deployed in {{fixed 0 .DeploySeconds}} s, then sent {{thousand .Requests}} requests over {{duration .DurationSeconds}} while killing {{.PodsKilled}} {{plural .PodsKilled "pod" "pods"}}, draining {{.NodeDrains}} {{plural .NodeDrains "node" "nodes"}} and rolling out {{.Rollouts}} {{plural .Rollouts "deploy" "deploys"}}</dd>
+    </div>
+    <div class="check">
+      <dt><span class="dot {{if .SLO.Met}}ok{{else}}fail{{end}}" aria-hidden="true"></span>Result</dt>
+      <dd><strong>{{fixed 3 .SuccessPct}}% of requests succeeded</strong> ({{thousand .Failed}} failed) · p95 {{fixed 1 .P95Ms}} ms · p99 {{fixed 1 .P99Ms}} ms · objective: {{fixed 1 .SLO.AvailabilityPct}}% succeed and {{fixed 0 .SLO.LatencyPct}}% finish under {{fixed 0 .SLO.LatencyMs}} ms, <strong>{{if .SLO.Met}}met{{else}}missed{{end}}</strong></dd>
+    </div>
+    <div class="check">
+      <dt><span class="dot {{if and .PodSecurityRejected .NetworkPolicyBlocked}}ok{{else}}warn{{end}}" aria-hidden="true"></span>Guardrails</dt>
+      <dd>{{if .PodSecurityRejected}}a privileged pod was rejected at admission{{else}}privileged-pod check did not run{{end}} · {{if .NetworkPolicyBlocked}}traffic from an unapproved namespace was blocked{{else}}network-policy check did not run{{end}}</dd>
+    </div>
+    {{- end}}
+  </dl>
+  {{- if .Image.Digest}}
+  <details>
+    <summary>Check the signature yourself</summary>
+    <p>The image is signed by the GitHub Actions workflow identity, not by a key anyone holds. With <a href="https://docs.sigstore.dev/cosign/system_config/installation/">cosign</a> installed:</p>
+    <pre><code>cosign verify {{.Image.Ref}}@{{.Image.Digest}} \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  --certificate-identity-regexp '^https://github.com/{{.Repo}}/'</code></pre>
+    <p>Or check the build provenance with the GitHub CLI:</p>
+    <pre><code>gh attestation verify oci://{{.Image.Ref}}@{{.Image.Digest}} --repo {{.Repo}}</code></pre>
+  </details>
+  {{- end}}
+</section>
+{{else}}
+{{if .Runtime.Pod}}
+<section class="receipts live" aria-label="Serving pod">
+  <p><span class="dot ok" aria-hidden="true"></span>Served live by pod <code>{{.Runtime.Pod}}</code>{{if .Runtime.Node}} on node <code>{{.Runtime.Node}}</code>{{end}} · build <code>{{short .Build.Commit}}</code>. Refresh and a different replica may answer.</p>
+</section>
+{{end}}
+{{end}}
+
+<section aria-labelledby="summary-title">
+  <h2 id="summary-title">Summary</h2>
+  <p class="summary">{{.Resume.Summary}}</p>
+</section>
+
+{{if .Resume.Translation}}
+<section aria-labelledby="translation-title">
+  <h2 id="translation-title">Operations, translated</h2>
+  <p class="lede">I have done most of this job before, in other industries. Here is how that experience maps to DevOps practice, with a link to where each one is put into practice in this repository.</p>
+  <table class="translate">
+    <thead><tr><th scope="col">In operations, I</th><th scope="col">In DevOps, that is</th><th scope="col">Proof</th></tr></thead>
+    <tbody>
+    {{- range .Resume.Translation}}
+      <tr>
+        <td data-label="In operations, I">{{.Then}}</td>
+        <td data-label="In DevOps, that is">{{.Now}}</td>
+        <td data-label="Proof">{{if .ProofURL}}<a href="{{.ProofURL}}">{{.Proof}}</a>{{else}}{{.Proof}}{{end}}</td>
+      </tr>
+    {{- end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+
+{{if .Resume.Projects}}
+<section aria-labelledby="projects-title">
+  <h2 id="projects-title">Projects</h2>
+  {{- range .Resume.Projects}}
+  <article class="entry">
+    <h3>{{if .URL}}<a href="{{.URL}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}</h3>
+    <p>{{.Summary}}</p>
+    {{- if .Highlights}}
+    <ul>{{range .Highlights}}<li>{{.}}</li>{{end}}</ul>
+    {{- end}}
+    {{- if .Stack}}
+    <p class="stack">{{range $i, $s := .Stack}}{{if $i}} · {{end}}{{$s}}{{end}}</p>
+    {{- end}}
+  </article>
+  {{- end}}
+</section>
+{{end}}
+
+<section aria-labelledby="experience-title">
+  <h2 id="experience-title">Experience</h2>
+  {{- range .Resume.Experience}}
+  <article class="entry">
+    <div class="entry-head">
+      <h3>{{.Title}}<span class="org">{{.Company}}{{if .Location}}, {{.Location}}{{end}}</span></h3>
+      <p class="dates">{{month .Start}} – {{month .End}}</p>
+    </div>
+    {{- if .Highlights}}
+    <ul>{{range .Highlights}}<li>{{.}}</li>{{end}}</ul>
+    {{- end}}
+  </article>
+  {{- end}}
+</section>
+
+{{if .Resume.Skills}}
+<section aria-labelledby="skills-title">
+  <h2 id="skills-title">Skills</h2>
+  <dl class="skills">
+  {{- range .Resume.Skills}}
+    <div><dt>{{.Name}}</dt><dd>{{range $i, $s := .Items}}{{if $i}}, {{end}}{{$s}}{{end}}</dd></div>
+  {{- end}}
+  </dl>
+</section>
+{{end}}
+
+{{if .Resume.Education}}
+<section aria-labelledby="education-title">
+  <h2 id="education-title">Education</h2>
+  {{- range .Resume.Education}}
+  <article class="entry">
+    <div class="entry-head">
+      <h3>{{.Credential}}<span class="org">{{.Institution}}{{if .Location}}, {{.Location}}{{end}}</span></h3>
+      <p class="dates">{{.Date}}</p>
+    </div>
+    {{- if .Notes}}
+    <ul>{{range .Notes}}<li>{{.}}</li>{{end}}</ul>
+    {{- end}}
+  </article>
+  {{- end}}
+</section>
+{{end}}
+
+</main>
+<footer>
+  <p>This resume is a Go service in a distroless container, deployed to Kubernetes with Helm and attacked on every release before it is published. <a href="{{.RepoURL}}">Read the source</a> · <a href="resume.json">resume.json</a> · build <code>{{short .Build.Commit}}</code></p>
+</footer>
+</body>
+</html>

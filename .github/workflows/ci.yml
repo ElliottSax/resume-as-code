@@ -1,0 +1,110 @@
+# Checks for every pull request, and the first stage of delivery.yml (which
+# calls this file as a reusable workflow, so the gates are defined once).
+#
+# Every third-party action is pinned to a full commit SHA: a tag can be moved
+# to malicious code, a SHA cannot. Dependabot proposes SHA bumps as PRs.
+name: ci
+
+on:
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  go:
+    name: Go tests and lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: app/go.mod
+          cache-dependency-path: app/go.sum
+      - name: Install pinned tools
+        run: |
+          BIN_DIR="$RUNNER_TEMP/bin" scripts/install-tools.sh golangci-lint
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: make test lint-go
+      - name: Keep test results for the published receipts
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results
+          path: |
+            out/test.json
+            out/coverage.out
+          retention-days: 30
+
+  chart:
+    name: Chart, policies and alerts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: |
+          BIN_DIR="$RUNNER_TEMP/bin" scripts/install-tools.sh helm kubeconform kyverno promtool
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: make lint-chart test-policy test-alerts
+
+  hygiene:
+    name: Scripts, workflows and Terraform
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: |
+          BIN_DIR="$RUNNER_TEMP/bin" scripts/install-tools.sh shellcheck actionlint terraform tflint trivy
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: make lint-shell lint-actions scan-config
+      - run: make lint-terraform
+        env:
+          # tflint downloads its Google ruleset from GitHub; authenticated
+          # requests avoid the shared runners' anonymous rate limit.
+          GITHUB_TOKEN: ${{ github.token }}
+
+  # Pull requests get the full drill too: no change merges without proving
+  # the platform still survives failure. (On main, delivery.yml runs the
+  # drill against the signed, published image instead.)
+  drill:
+    name: Build, scan and chaos drill
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned tools
+        run: |
+          BIN_DIR="$RUNNER_TEMP/bin" scripts/install-tools.sh kind kubectl helm trivy
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - run: make image scan IMAGE=resume:pr
+      - run: scripts/drill.sh
+        env:
+          IMAGE: resume:pr
+      - name: Keep drill results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: drill-results-pr
+          path: |
+            out/drill.json
+            out/drill-events.log
+            out/k6-summary.json
+          if-no-files-found: ignore
+          retention-days: 14

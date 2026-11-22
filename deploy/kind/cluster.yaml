@@ -1,0 +1,10 @@
+# A throwaway cluster for the chaos drill and local demos.
+# One control-plane node (which also hosts the load generator) and two
+# workers, so the app's topology spread and disruption budget actually have
+# something to do when a node is drained.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+  - role: control-plane
+  - role: worker
+  - role: worker

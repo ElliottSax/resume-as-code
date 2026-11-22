@@ -1,0 +1,96 @@
+# Defaults are production-shaped: three replicas, autoscaling, a disruption
+# budget, Pod Security "restricted" compliance and default-deny networking.
+# Anything that needs extra cluster software (Prometheus Operator, Gateway API)
+# is off until you turn it on.
+
+image:
+  repository: ghcr.io/elliottsax/resume-as-code
+  # Defaults to the chart's appVersion.
+  tag: ""
+  # When set, the digest wins over the tag, so the cluster runs exactly the
+  # bytes that were scanned and signed. A tag can be moved; a digest cannot.
+  digest: ""
+  pullPolicy: IfNotPresent
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Used only when autoscaling is disabled.
+replicaCount: 3
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  # Voluntary disruptions (node drains, upgrades) may take down one pod at a time.
+  maxUnavailable: 1
+
+resources:
+  requests:
+    cpu: 25m
+    memory: 32Mi
+  limits:
+    # No CPU limit on purpose: CPU limits cause throttling even when the node
+    # has idle cores. Requests still guarantee a fair share. Memory is limited
+    # because running out of memory is not something a process recovers from.
+    memory: 64Mi
+
+service:
+  type: ClusterIP
+  port: 80
+
+# Graceful shutdown. On pod deletion, Kubernetes runs preStop and removes the
+# pod from Service endpoints at the same time. Sleeping first gives every node
+# time to stop routing here before the app stops accepting connections.
+shutdown:
+  preStopSleepSeconds: 5
+  terminationGracePeriodSeconds: 30
+
+# Spread replicas across nodes so losing one node never takes all of them.
+topologySpread:
+  enabled: true
+  maxSkew: 1
+
+networkPolicy:
+  enabled: true
+  # Pods in the release namespace may always reach the service. Add namespaces
+  # here (by name) that may also reach it, such as your gateway's namespace.
+  allowedNamespaces: []
+  # The namespace allowed to scrape the metrics port.
+  monitoringNamespace: monitoring
+
+metrics:
+  serviceMonitor:
+    enabled: false
+    interval: 15s
+    # Extra labels so your Prometheus instance selects the monitor.
+    labels: {}
+  prometheusRule:
+    enabled: false
+    labels: {}
+  grafanaDashboard:
+    enabled: false
+    # The Grafana sidecar loads ConfigMaps carrying this label.
+    labels:
+      grafana_dashboard: "1"
+
+# Gateway API is the successor to Ingress (the ingress-nginx project was retired in 2026).
+httpRoute:
+  enabled: false
+  parentRefs: []
+  #  - name: public
+  #    namespace: gateway
+  hostnames: []
+
+# Extra environment variables, for example the fault-injection switches used
+# in the alerting demo:  FAULT_ERROR_RATIO: "0.05"
+env: {}
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

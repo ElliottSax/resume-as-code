@@ -1,0 +1,23 @@
+# build and drill output
+out/
+dist/
+
+# terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+.terraform.tfstate.lock.info
+# provider lock files ARE committed (.terraform.lock.hcl)
+
+# local secrets and notes
+.env
+*.local.*
+.private/
+
+# editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

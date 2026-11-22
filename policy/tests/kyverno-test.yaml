@@ -1,0 +1,82 @@
+# `kyverno test policy/tests` — every policy must pass the hardened fixture
+# and fail the insecure one. A policy that silently stops loading (it has
+# happened: YAML anchors do not cross '---' boundaries) fails this test.
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: workload-policies
+policies:
+  - ../workload-policies.yaml
+resources:
+  - resources.yaml
+results:
+  - policy: require-run-as-non-root
+    resources: [hardened]
+    kind: Deployment
+    result: pass
+    isValidatingPolicy: true
+  - policy: require-run-as-non-root
+    resources: [insecure]
+    kind: Deployment
+    result: fail
+    isValidatingPolicy: true
+  - policy: disallow-privilege-escalation
+    resources: [hardened]
+    kind: Deployment
+    result: pass
+    isValidatingPolicy: true
+  - policy: disallow-privilege-escalation
+    resources: [insecure]
+    kind: Deployment
+    result: fail
+    isValidatingPolicy: true
+  - policy: require-drop-all-capabilities
+    resources: [hardened]
+    kind: Deployment
+    result: pass
+    isValidatingPolicy: true
+  - policy: require-drop-all-capabilities
+    resources: [insecure]
+    kind: Deployment
+    result: fail
+    isValidatingPolicy: true
+  - policy: require-read-only-root-filesystem
+    resources: [hardened]
+    kind: Deployment
+    result: pass
+    isValidatingPolicy: true
+  - policy: require-read-only-root-filesystem
+    resources: [insecure]
+    kind: Deployment
+    result: fail
+    isValidatingPolicy: true
+  - policy: require-requests-and-memory-limit
+    resources: [hardened]
+    kind: Deployment
+    result: pass
+    isValidatingPolicy: true
+  - policy: require-requests-and-memory-limit
+    resources: [insecure]
+    kind: Deployment
+    result: fail
+    isValidatingPolicy: true
+  - policy: require-pinned-images
+    resources: [hardened]
+    kind: Deployment
+    result: pass
+    isValidatingPolicy: true
+  - policy: require-pinned-images
+    resources: [insecure]
+    kind: Deployment
+    result: fail
+    isValidatingPolicy: true
+  - policy: require-probes
+    resources: [hardened]
+    kind: Deployment
+    result: pass
+    isValidatingPolicy: true
+  - policy: require-probes
+    resources: [insecure]
+    kind: Deployment
+    result: fail
+    isValidatingPolicy: true

@@ -1,0 +1,162 @@
+# Unit tests for the alerting rules: `promtool test rules` replays synthetic
+# metric histories and asserts exactly which alerts fire, and when.
+# An alert that has never been seen to fire is an alert you cannot trust.
+rule_files:
+  - ../../deploy/helm/resume/files/slo-rules.yaml
+
+evaluation_interval: 30s
+
+tests:
+  # 1. Three healthy hours: silence.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="resume",route="index",method="GET",code="200"}'
+        values: '0+600x180'
+      - series: 'http_requests_total{job="resume",route="healthz",method="GET",code="200"}'
+        values: '0+60x180'
+      - series: 'http_request_duration_seconds_bucket{job="resume",route="index",method="GET",le="0.25"}'
+        values: '0+600x180'
+      - series: 'http_request_duration_seconds_count{job="resume",route="index",method="GET"}'
+        values: '0+600x180'
+      - series: 'up{job="resume",instance="a"}'
+        values: '1x180'
+      - series: 'resume_ready{job="resume",instance="a"}'
+        values: '1x180'
+      - series: 'resume_ready{job="resume",instance="b"}'
+        values: '1x180'
+    promql_expr_test:
+      - expr: resume:sli_errors:ratio_rate1h
+        eval_time: 2h
+        exp_samples:
+          - labels: 'resume:sli_errors:ratio_rate1h'
+            value: 0
+    alert_rule_test:
+      - {eval_time: 170m, alertname: ResumeErrorBudgetBurnFast, exp_alerts: []}
+      - {eval_time: 170m, alertname: ResumeErrorBudgetBurnSlow, exp_alerts: []}
+      - {eval_time: 170m, alertname: ResumeLatencyBudgetBurnFast, exp_alerts: []}
+      - {eval_time: 170m, alertname: ResumeAllReplicasDown, exp_alerts: []}
+      - {eval_time: 170m, alertname: ResumeReplicasDegraded, exp_alerts: []}
+
+  # 2. Hard outage at minute 30: every request fails. Page within minutes.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="resume",route="index",method="GET",code="200"}'
+        values: '0+600x30 18000x60'
+      - series: 'http_requests_total{job="resume",route="index",method="GET",code="503"}'
+        values: '0x30 600+600x60'
+      # Failing health checks must not count: they are excluded from the SLI.
+      - series: 'http_requests_total{job="resume",route="readyz",method="GET",code="503"}'
+        values: '0+1000x90'
+    alert_rule_test:
+      - eval_time: 29m
+        alertname: ResumeErrorBudgetBurnFast
+        exp_alerts: []
+      - eval_time: 40m
+        alertname: ResumeErrorBudgetBurnFast
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              slo: availability
+            exp_annotations:
+              summary: Error budget is burning fast
+              description: Requests are failing fast enough to spend the whole 30-day error budget in a few days. Someone needs to look now.
+              runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/high-error-rate.md
+
+  # 3. A steady 0.5% error rate (5x burn): a ticket, never a page.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="resume",route="index",method="GET",code="200"}'
+        values: '0+1990x120'
+      - series: 'http_requests_total{job="resume",route="index",method="GET",code="503"}'
+        values: '0+10x120'
+    alert_rule_test:
+      - eval_time: 100m
+        alertname: ResumeErrorBudgetBurnFast
+        exp_alerts: []
+      - eval_time: 100m
+        alertname: ResumeErrorBudgetBurnSlow
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+              slo: availability
+            exp_annotations:
+              summary: Error budget is burning steadily
+              description: A low but persistent error rate will exhaust the 30-day error budget before the window ends. Fix it this week, not tonight.
+              runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/high-error-rate.md
+
+  # 4. Everything succeeds but gets slow at minute 30: the latency SLO pages.
+  - interval: 1m
+    input_series:
+      - series: 'http_requests_total{job="resume",route="index",method="GET",code="200"}'
+        values: '0+600x60'
+      - series: 'http_request_duration_seconds_bucket{job="resume",route="index",method="GET",le="0.25"}'
+        values: '0+600x30 18000x30'
+      - series: 'http_request_duration_seconds_count{job="resume",route="index",method="GET"}'
+        values: '0+600x60'
+    alert_rule_test:
+      - eval_time: 45m
+        alertname: ResumeErrorBudgetBurnFast
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: ResumeLatencyBudgetBurnFast
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              slo: latency
+            exp_annotations:
+              summary: Latency budget is burning fast
+              description: Too many requests are taking longer than 250 ms. At this rate the 30-day latency budget is gone in a few days.
+              runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/high-latency.md
+
+  # 5. Replicas fail one by one: degraded is a ticket, gone is a page.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="resume",instance="a"}'
+        values: '1x10 0x30'
+      - series: 'up{job="resume",instance="b"}'
+        values: '1x20 0x20'
+      - series: 'resume_ready{job="resume",instance="a"}'
+        values: '1x10 0x30'
+      - series: 'resume_ready{job="resume",instance="b"}'
+        values: '1x20 0x20'
+    alert_rule_test:
+      - eval_time: 9m
+        alertname: ResumeReplicasDegraded
+        exp_alerts: []
+      - eval_time: 18m
+        alertname: ResumeReplicasDegraded
+        exp_alerts:
+          - exp_labels:
+              severity: ticket
+            exp_annotations:
+              summary: Fewer than two replicas are ready
+              description: The service is up but one more failure from an outage. Rollouts and drains should never hold it here this long.
+              runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/replicas-degraded.md
+      - eval_time: 18m
+        alertname: ResumeAllReplicasDown
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: ResumeAllReplicasDown
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: No resume replica is being scraped successfully
+              description: Prometheus cannot reach any replica. Either the service is down or monitoring is broken, and both need a human.
+              runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/all-replicas-down.md
+
+  # 6. The scrape target disappears entirely (no `up` series at all). Still a page.
+  - interval: 1m
+    input_series:
+      - series: 'unrelated_metric'
+        values: '1x10'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ResumeAllReplicasDown
+        exp_alerts:
+          - exp_labels:
+              severity: page
+            exp_annotations:
+              summary: No resume replica is being scraped successfully
+              description: Prometheus cannot reach any replica. Either the service is down or monitoring is broken, and both need a human.
+              runbook_url: https://github.com/ElliottSax/resume-as-code/blob/main/docs/runbooks/all-replicas-down.md

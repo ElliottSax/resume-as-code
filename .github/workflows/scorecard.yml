@@ -1,0 +1,35 @@
+# OpenSSF Scorecard: an independent, automated audit of this repository's
+# security practices (pinned dependencies, token permissions, branch
+# protection, signed releases, and more). The score is public and the badge
+# in the README links to it, so the claim is checkable by anyone.
+name: scorecard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "29 7 * * 2"
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  analysis:
+    name: Scorecard analysis
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      security-events: write # upload results to code scanning
+      id-token: write # publish results to the public Scorecard API
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ossf/scorecard-action@23f22cd43608bae7a1f1fa2603d7314dee9538a5 # v2.6.0
+        with:
+          results_file: results.sarif
+          results_format: sarif
+          publish_results: true
+      - uses: github/codeql-action/upload-sarif@55aa1d29038906879490fb63e58ae8bac369c88f # codeql-bundle-v2.27.5
+        with:
+          sarif_file: results.sarif

@@ -1,0 +1,26 @@
+# Dependabot keeps every pin fresh: action SHAs, Go modules, base-image
+# digests and Terraform providers. Each bump is a PR, so it runs the full
+# pipeline, chaos drill included, before it can merge.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: {interval: weekly, day: monday}
+    groups:
+      actions: {patterns: ["*"]}
+
+  - package-ecosystem: gomod
+    directory: /app
+    schedule: {interval: weekly, day: monday}
+    groups:
+      go-modules: {patterns: ["*"]}
+
+  - package-ecosystem: docker
+    directory: /
+    schedule: {interval: weekly, day: monday}
+
+  - package-ecosystem: terraform
+    directories: ["/infra/terraform/*"]
+    schedule: {interval: weekly, day: monday}
+    groups:
+      terraform-providers: {patterns: ["*"]}

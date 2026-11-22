@@ -1,0 +1,48 @@
+# Fixtures for `kyverno test`. "hardened" must pass every policy, "insecure"
+# must fail every policy. If a policy stops catching "insecure", CI fails:
+# the guardrails are tested, not assumed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hardened
+  namespace: default
+spec:
+  selector:
+    matchLabels: {app: hardened}
+  template:
+    metadata:
+      labels: {app: hardened}
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: app
+          image: ghcr.io/example/app@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: ["ALL"]}
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {memory: 32Mi}
+          readinessProbe: {httpGet: {path: /readyz, port: 8080}}
+          livenessProbe: {httpGet: {path: /healthz, port: 8080}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: insecure
+  namespace: default
+spec:
+  selector:
+    matchLabels: {app: insecure}
+  template:
+    metadata:
+      labels: {app: insecure}
+    spec:
+      containers:
+        - name: app
+          image: nginx:latest
+          securityContext:
+            privileged: true

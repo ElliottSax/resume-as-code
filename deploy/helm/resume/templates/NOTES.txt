@@ -1,0 +1,9 @@
+resume is deployed as {{ include "resume.image" . }}.
+
+See it:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "resume.fullname" . }} 8080:{{ .Values.service.port }}
+  open http://localhost:8080   (refresh: the serving pod changes)
+
+Check it:
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }}
+  kubectl -n {{ .Release.Namespace }} get pods,pdb,hpa,networkpolicy
