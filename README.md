@@ -24,7 +24,7 @@ I'm Elliott Saxton. I've spent fifteen years in operations: aircraft turns for D
 
 ```mermaid
 flowchart LR
-    PR[Pull request] --> CI{{"ci.yml<br/>tests · lint · policies<br/>alert tests · chaos drill"}}
+    PR[Pull request] --> CI{{"ci.yml<br/>tests · lint · policies<br/>alert tests · chaos drill<br/>release rehearsal"}}
     CI -->|merge| B
     subgraph delivery.yml
       B["Build<br/>scan before push<br/>amd64 + arm64"] --> S["Sign + attest<br/>cosign keyless<br/>SLSA · SBOM"]
@@ -88,6 +88,7 @@ git clone https://github.com/ElliottSax/resume-as-code && cd resume-as-code
 make tools        # exact, checksum-verified versions of kind, Helm, Trivy, Terraform...
 make check        # every static check CI runs
 make drill        # the full chaos drill (about 6 minutes)
+make release-dry-run   # rehearse the release on a throwaway registry, minus signing
 
 make up           # leave a cluster running (prints the port-forward to open the site)
 make observe      # add Prometheus, Grafana and the SLO dashboard
@@ -114,7 +115,7 @@ loadtest/k6.js           the drill's traffic: constant arrival rate, SLO thresho
 observability/tests/     promtool unit tests for every alert
 policy/                  Kyverno policies and their tests
 infra/terraform/         github/ (this repo's settings) and gcp-cloud-run/ (production target)
-scripts/                 install-tools, drill, observe, receipts, image-facts
+scripts/                 install-tools, drill, observe, receipts, image-facts, release-dry-run
 .github/workflows/       ci (PRs), delivery (main + weekly), scorecard
 docs/                    SLOs, supply chain, runbooks, postmortems, ADRs
 tools.env                every tool and image version, in one place
@@ -122,13 +123,15 @@ tools.env                every tool and image version, in one place
 
 ## Bugs the guardrails caught while building this
 
-Every one of these would have shipped green without a check that exercised the real thing:
+Every one of these passed the static checks, and only a check that exercised the real thing caught it:
 
 1. **Kyverno silently skipped five of seven policies.** YAML anchors don't cross `---` document boundaries, and the broken documents were dropped without an error. `kyverno test`, which requires every policy to fail a known-bad manifest, caught it. ([ADR 0004](docs/adr/0004-policy-in-ci-and-at-admission.md))
 2. **The `helm test` pod inherited the app's selector labels**, a pattern straight from the `helm create` scaffold. The NetworkPolicy's deny-all egress then cut off the test itself, the Service routed real traffic to it, and the PodDisruptionBudget counted it as a replica. The drill's first full run caught it.
 3. **Helm 4's `--wait` was satisfied by one replica.** With an autoscaler in charge, the chart rightly sets no replica count, so a fresh install starts at one. The drill now waits for the HPA's minimum before it calls the service deployed.
 4. **kind couldn't import multi-arch images** pulled for one platform, because the index names layers that were never downloaded. Fixed by exporting only the host's platform.
 5. **awk printed epoch timestamps as `1.79539e+09`**, which scheduled every chaos event in the past. The drill fired all its faults in the first second, and reported a timeout. Fixed with explicit `printf`.
+6. **The arm64 build ran an arm64 binary on an amd64 machine.** The Dockerfile cross-compiles for the target CPU, then ran the result to validate the resume. That only works with an emulator installed, and the release job installs none. A [release rehearsal](scripts/release-dry-run.sh) against a throwaway registry caught it before the first push, and now runs on every pull request.
+7. **A jq precedence slip would have failed the release after merge.** In the script that reads the image size back from the registry, `[.layers[].size] | add + .config.size` means `… | (add + .config.size)`, which looks up `.config` on a list of numbers. ShellCheck can't see inside a jq program. The same rehearsal caught it.
 
 ## Operations
 

@@ -100,6 +100,10 @@ image: ## Build the container image
 scan: ## Trivy vulnerability scan of the image (fails on fixable HIGH/CRITICAL)
 	trivy image --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 $(IMAGE)
 
+.PHONY: release-dry-run
+release-dry-run: ## Rehearse the release (multi-arch push, SBOM, receipts, site) on a throwaway registry
+	scripts/release-dry-run.sh
+
 ## ---- Kubernetes ----
 
 .PHONY: drill

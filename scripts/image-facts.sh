@@ -15,7 +15,7 @@ if jq -e '.manifests' >/dev/null <<<"$raw"; then
   amd64=$(jq -r '.manifests[] | select(.platform.os == "linux" and .platform.architecture == "amd64") | .digest' <<<"$raw")
   raw=$(docker buildx imagetools inspect --raw "$ref@$amd64")
 fi
-bytes=$(jq '[.layers[].size] | add + .config.size' <<<"$raw")
+bytes=$(jq '([.layers[].size] | add) + .config.size' <<<"$raw")
 
 jq -n --arg ref "$ref" --arg digest "$digest" --argjson bytes "$bytes" '{
   ref: $ref,

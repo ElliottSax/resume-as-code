@@ -14,7 +14,7 @@ set -euo pipefail
 
 dir=$(cd "${1:-out}" && pwd)
 repo=${GITHUB_REPOSITORY:-ElliottSax/resume-as-code}
-commit=${GITHUB_SHA:-$(git rev-parse HEAD)}
+commit=${GITHUB_SHA:-$(git rev-parse --verify -q HEAD 2>/dev/null || echo 0000000000000000000000000000000000000000)}
 run_url="${GITHUB_SERVER_URL:-https://github.com}/$repo/actions/runs/${GITHUB_RUN_ID:-0}"
 
 for f in test.json coverage.out image.json scan.json drill.json; do
