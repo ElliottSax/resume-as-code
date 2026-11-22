@@ -17,6 +17,13 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download && go mod verify
 
 COPY app/ ./
 
+# Reject a malformed resume before anything is built. This runs natively on
+# the build machine: the release binary below may be cross-compiled for
+# another CPU (arm64 on an amd64 runner) and could not run here.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go run . validate
+
 ARG VERSION=dev
 ARG COMMIT=unknown
 ARG BUILD_DATE=unknown
@@ -31,8 +38,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
       -X github.com/ElliottSax/resume-as-code/app/internal/buildinfo.Version=${VERSION} \
       -X github.com/ElliottSax/resume-as-code/app/internal/buildinfo.Commit=${COMMIT} \
       -X github.com/ElliottSax/resume-as-code/app/internal/buildinfo.Date=${BUILD_DATE}" \
-      -o /out/resume . \
- && /out/resume validate
+      -o /out/resume .
 
 FROM gcr.io/distroless/static-debian13:nonroot@sha256:aafe993665bf6200db38a02c11a9351e782a84b6a45e7f33b6695638c88e3931
 
