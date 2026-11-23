@@ -56,6 +56,15 @@ func TestServeShutsDownGracefully(t *testing.T) {
 		t.Errorf("healthcheck subcommand: %v", err)
 	}
 
+	// Go's HTTP client sometimes dials a spare connection and parks it unused
+	// in its pool, when a pooled connection frees up first. The server sees it
+	// as a new connection, and Shutdown deliberately gives a new connection
+	// more than 5 s to send its first request (net/http, Go issue 22682). With
+	// this test's 5 s budget that made it fail about 1 run in 10. Production
+	// allows 20 s, so the server is fine; closing the spare here keeps the
+	// test about SIGTERM, not about the client's pool.
+	client.CloseIdleConnections()
+
 	if err := syscall.Kill(syscall.Getpid(), syscall.SIGTERM); err != nil {
 		t.Fatal(err)
 	}

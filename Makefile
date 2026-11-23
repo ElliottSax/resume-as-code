@@ -100,6 +100,12 @@ image: ## Build the container image
 scan: ## Trivy vulnerability scan of the image (fails on fixable HIGH/CRITICAL)
 	trivy image --scanners vuln --ignore-unfixed --severity HIGH,CRITICAL --exit-code 1 $(IMAGE)
 
+FUZZTIME ?= 30s
+.PHONY: fuzz
+fuzz: ## Fuzz the resume parser and request-ID handling (FUZZTIME=30s each)
+	cd app && go test ./internal/resume -run '^$$' -fuzz '^FuzzParse$$' -fuzztime $(FUZZTIME)
+	cd app && go test ./internal/server -run '^$$' -fuzz '^FuzzRequestID$$' -fuzztime $(FUZZTIME)
+
 .PHONY: release-dry-run
 release-dry-run: ## Rehearse the release (multi-arch push, SBOM, receipts, site) on a throwaway registry
 	scripts/release-dry-run.sh

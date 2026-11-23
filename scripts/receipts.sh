@@ -24,7 +24,8 @@ for f in test.json coverage.out image.json scan.json drill.json; do
   fi
 done
 
-passed=$(jq -s '[.[] | select(.Action == "pass" and .Test != null)] | length' "$dir/test.json")
+# Top-level tests only: subtests (table cases, fuzz seeds) would inflate it.
+passed=$(jq -s '[.[] | select(.Action == "pass" and .Test != null and (.Test | contains("/") | not))] | length' "$dir/test.json")
 coverage=$(cd "$(dirname "$0")/../app" && go tool cover -func="$dir/coverage.out" | awk 'END { sub("%", "", $3); print $3 }')
 
 jq -n \
