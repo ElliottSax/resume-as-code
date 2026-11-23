@@ -8,7 +8,7 @@
 
 ### → [Read the resume](https://elliottsax.github.io/resume-as-code/)
 
-I'm Elliott Saxton. I've spent fifteen years in operations: aircraft turns for Delta, distribution centers at SuperValu and Best Buy, and payment operations at Target. I'm moving into DevOps and SRE. Rather than list tools I've touched, I built one small service and run it the way production systems should be run. **Every claim on the resume is checked by the pipeline that publishes it**, and the page shows the receipts.
+I'm Elliott Saxton. I've spent nearly fourteen years in operations: aircraft turns for Delta, distribution centers at SuperValu and Best Buy, and gift-card operations at Target. I'm moving into DevOps and SRE. Rather than list tools I've touched, I built one small service and run it the way production systems should be run. **Every claim on the resume is checked by the pipeline that publishes it**, and the page shows the receipts.
 
 ## In sixty seconds
 
