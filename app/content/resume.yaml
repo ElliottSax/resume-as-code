@@ -127,7 +127,7 @@ skills:
   - name: Platform
     items: [Kubernetes, Helm, Docker, Linux, Pod Security Standards, NetworkPolicy]
   - name: Delivery
-    items: [GitHub Actions, Trivy, Syft SBOMs, Sigstore cosign, SLSA provenance, Kyverno]
+    items: [GitHub Actions, Trivy, SPDX SBOMs, Sigstore cosign, SLSA provenance, Kyverno]
   - name: Infrastructure as code
     items: [Terraform, Google Cloud Run, Workload Identity Federation]
   - name: Observability

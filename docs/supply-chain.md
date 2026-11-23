@@ -12,10 +12,12 @@ Nothing in the build floats. Every input is fixed to exact bytes, and Dependabot
 | Base images | `sha256` digest | [`Dockerfile`](../Dockerfile) |
 | CLI tools (kind, Helm, Trivy, Terraform…) | exact version + checksum verified on download | [`tools.env`](../tools.env), [`install-tools.sh`](../scripts/install-tools.sh) |
 | Go modules | `go.sum` hashes, checked with `go mod verify` during the build | [`app/go.sum`](../app/go.sum) |
-| Drill images (kind node, k6) | `sha256` digest | [`tools.env`](../tools.env) |
+| Drill and rehearsal images (kind node, k6, registry) | `sha256` digest | [`tools.env`](../tools.env), [`ci.yml`](../.github/workflows/ci.yml) |
 | Terraform providers | lock file with hashes | `infra/terraform/*/.terraform.lock.hcl` |
 
-CI installs tools with the same script a laptop uses, not with third-party `setup-*` actions. That leaves fewer people who can push code into the pipeline.
+CI installs the command-line tools with the same script a laptop uses, not with a third-party `setup-*` action per tool. That leaves fewer people who can push code into the pipeline.
+
+Vulnerable dependencies also get fix PRs automatically (Dependabot security updates, set in [Terraform](../infra/terraform/github/main.tf)). [SECURITY.md](../SECURITY.md) explains how to report a vulnerability privately.
 
 ## What is checked, and when
 
@@ -31,7 +33,7 @@ flowchart LR
     H -->|only this workflow's<br/>signature accepted| I[Chaos drill]
 ```
 
-- **Scan before push.** The image is built and scanned locally first. A vulnerable image never reaches the registry. Both architectures are scanned.
+- **Scan before push.** The amd64 image is built and scanned before anything is pushed, so a vulnerable build never reaches the registry. The arm64 variant is scanned from the registry straight after the push, against the same gate, and a failure there stops the release before the drill.
 - **Keyless signing.** No signing key exists to leak. GitHub issues the workflow a short-lived OIDC token, Sigstore's Fulcio turns it into a certificate that names this exact workflow, and the signature goes into the public Rekor transparency log.
 - **Verify before deploy.** The drill job runs `cosign verify` against the exact identity `…/.github/workflows/delivery.yml@refs/heads/main` and refuses to deploy anything else, including an image pushed by hand with stolen credentials. In a cluster, an admission controller (Kyverno or Sigstore's policy-controller) would do the same check.
 - **Provenance.** The SLSA build provenance records which workflow, commit and runner produced the image.

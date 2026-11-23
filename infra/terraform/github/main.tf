@@ -59,6 +59,18 @@ resource "github_repository_vulnerability_alerts" "this" {
   enabled    = true
 }
 
+# Dependabot opens fix PRs for vulnerable dependencies on its own. (Routine
+# version bumps are configured separately, in .github/dependabot.yml.)
+resource "github_repository_dependabot_security_updates" "this" {
+  repository = github_repository.this.name
+  enabled    = true
+  depends_on = [github_repository_vulnerability_alerts.this]
+}
+
+# Private vulnerability reporting, the channel SECURITY.md points to, has no
+# resource in this provider version. It is switched on once, by hand:
+#   gh api -X PUT repos/OWNER/REPO/private-vulnerability-reporting
+
 resource "github_repository_ruleset" "main" {
   name        = "protect-main"
   repository  = github_repository.this.name

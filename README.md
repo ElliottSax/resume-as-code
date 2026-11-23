@@ -27,7 +27,7 @@ flowchart LR
     PR[Pull request] --> CI{{"ci.yml<br/>tests · lint · policies<br/>alert tests · chaos drill<br/>release rehearsal"}}
     CI -->|merge| B
     subgraph delivery.yml
-      B["Build<br/>scan before push<br/>amd64 + arm64"] --> S["Sign + attest<br/>cosign keyless<br/>SLSA · SBOM"]
+      B["Build amd64 + arm64<br/>scan gate on both"] --> S["Sign + attest<br/>cosign keyless<br/>SLSA · SBOM"]
       S --> V{"cosign verify<br/>only this workflow's<br/>signature passes"}
       V --> D["Chaos drill<br/>throwaway 3-node cluster<br/>SLO gate"]
       D -->|SLO met| P["Publish<br/>receipts.json → static site<br/>GitHub Pages"]
@@ -89,6 +89,7 @@ make tools        # exact, checksum-verified versions of kind, Helm, Trivy, Terr
 make check        # every static check CI runs
 make drill        # the full chaos drill (about 6 minutes)
 make release-dry-run   # rehearse the release on a throwaway registry, minus signing
+make fuzz         # fuzz the resume parser and request-ID handling
 
 make up           # leave a cluster running (prints the port-forward to open the site)
 make observe      # add Prometheus, Grafana and the SLO dashboard
@@ -132,6 +133,7 @@ Every one of these passed the static checks, and only a check that exercised the
 5. **awk printed epoch timestamps as `1.79539e+09`**, which scheduled every chaos event in the past. The drill fired all its faults in the first second, and reported a timeout. Fixed with explicit `printf`.
 6. **The arm64 build ran an arm64 binary on an amd64 machine.** The Dockerfile cross-compiles for the target CPU, then ran the result to validate the resume. That only works with an emulator installed, and the release job installs none. A [release rehearsal](scripts/release-dry-run.sh) against a throwaway registry caught it before the first push, and now runs on every pull request.
 7. **A jq precedence slip would have failed the release after merge.** In the script that reads the image size back from the registry, `[.layers[].size] | add + .config.size` means `… | (add + .config.size)`, which looks up `.config` on a list of numbers. ShellCheck can't see inside a jq program. The same rehearsal caught it.
+8. **The graceful-shutdown test failed about one run in ten.** Go's HTTP client sometimes parks a spare connection, never used, in its pool. `Server.Shutdown` deliberately gives a connection that hasn't sent its first request more than five seconds ([Go issue 22682](https://github.com/golang/go/issues/22682)), and the test allowed exactly five. `go test -count=100` measured 8 to 12 failures per 100 runs. The fix went into the test, not the server, whose real budget is 20 seconds. Afterwards: 0 failures in 400 runs.
 
 ## Operations
 
