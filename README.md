@@ -117,7 +117,7 @@ observability/tests/     promtool unit tests for every alert
 policy/                  Kyverno policies and their tests
 infra/terraform/         github/ (this repo's settings) and gcp-cloud-run/ (production target)
 scripts/                 install-tools, drill, observe, receipts, image-facts, release-dry-run
-.github/workflows/       ci (PRs), delivery (main + weekly), scorecard
+.github/workflows/       ci (PRs), delivery (main + weekly), codeql, scorecard
 docs/                    SLOs, supply chain, runbooks, postmortems, ADRs
 tools.env                every tool and image version, in one place
 ```
