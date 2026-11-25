@@ -38,6 +38,7 @@ flowchart LR
 - **Verify before deploy.** The drill job runs `cosign verify` against the exact identity `…/.github/workflows/delivery.yml@refs/heads/main` and refuses to deploy anything else, including an image pushed by hand with stolen credentials. In a cluster, an admission controller (Kyverno or Sigstore's policy-controller) would do the same check.
 - **Provenance.** The SLSA build provenance records which workflow, commit and runner produced the image.
 - **SBOM.** An SPDX bill of materials for every image, attested to the image and published on the site.
+- **Static analysis.** [CodeQL](../.github/workflows/codeql.yml) scans the Go service, the k6 load script and the workflow files on every pull request, every push to main and weekly.
 
 ## Verify it yourself
 
